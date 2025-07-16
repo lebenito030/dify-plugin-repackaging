@@ -95,6 +95,72 @@ git clone https://github.com/junjiem/dify-plugin-repackaging.git
 
 ![db_query](images/db_query.png)
 
+### Advanced Usage: Batch Repackaging and Custom Directories
+
+The script has been updated to support more flexible workflows.
+
+#### Batch Repackaging from a Directory
+
+You can now repackage all `.difypkg` files contained within a specific directory. This is useful for processing multiple plugins at once. We suggest creating a `_temp` directory to hold your source `.difypkg` files.
+
+**Example:**
+
+Place your `.difypkg` files into a `_temp` folder, then run the following command:
+
+```shell
+./plugin_repackaging.sh local _temp
+```
+
+The script will find and repackage every `.difypkg` file inside `_temp`. The final repackaged files will be placed into the `_output` directory by default.
+
+#### Custom Temporary and Output Directories
+
+By default, the script unpacks plugins into a `_work` directory for processing and places the final repackaged files into an `_output` directory. You can override these defaults using the `-t` (temporary) and `-o` (output) flags.
+
+**Example:**
+
+```shell
+./plugin_repackaging.sh -t ./my_temp_work -o ./my_final_packages local _temp
+```
+
+This command will:
+- Use `./my_temp_work` as the temporary directory for unpacking and processing.
+- Place the final `.difypkg` files into the `./my_final_packages` directory.
+- Process all plugins located in the `_temp` directory.
+
+### 高级用法：批量重打包与自定义目录
+
+脚本已更新以支持更灵活的工作流。
+
+#### 从目录批量重打包
+
+现在，您可以一次性重打包指定目录下的所有 `.difypkg` 文件。这对于同时处理多个插件非常有用。我们建议创建一个 `_temp` 目录来存放源 `.difypkg` 文件。
+
+**示例：**
+
+将您的 `.difypkg` 文件放入 `_temp` 文件夹中，然后运行以下命令：
+
+```shell
+./plugin_repackaging.sh local _temp
+```
+
+脚本将查找并重打包 `_temp` 目录下的每一个 `.difypkg` 文件。默认情况下，最终重打包好的文件会放入 `_output` 目录。
+
+#### 自定义临时和输出目录
+
+默认情况下，脚本会将插件解压到 `_work` 目录进行处理，并将最终重打包好的文件放入 `_output` 目录。您可以使用 `-t` (临时) 和 `-o` (输出) 标志覆盖这些默认设置。
+
+**示例：**
+
+```shell
+./plugin_repackaging.sh -t ./my_temp_work -o ./my_final_packages local _temp
+```
+
+此命令将：
+- 使用 `./my_temp_work` 作为解压和处理的临时目录。
+- 将最终的 `.difypkg` 文件放入 `./my_final_packages` 目录。
+- 处理位于 `_temp` 目录中的所有插件。
+
 #### Platform Crossing Repacking
 
 For repacking the plugins in different platforms between operating and running environment, 
@@ -135,4 +201,3 @@ Visit the Dify platform's plugin management page, choose Local Package File to c
 ### Star history
 
 [![Star History Chart](https://api.star-history.com/svg?repos=junjiem/dify-plugin-repackaging&type=Date)](https://star-history.com/#junjiem/dify-plugin-repackaging&Date)
-

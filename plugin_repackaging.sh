@@ -24,6 +24,8 @@ fi
 
 PIP_PLATFORM=""
 PACKAGE_SUFFIX="offline"
+TEMP_DIR_NAME="_work"
+OUTPUT_DIR_NAME="_output"
 
 market(){
 	if [[ -z "$2" || -z "$3" || -z "$4" ]]; then
@@ -82,39 +84,63 @@ github(){
 }
 
 _local(){
-	echo $2
 	if [[ -z "$2" ]]; then
 		echo ""
-		echo "Usage: "$0" local [difypkg path]"
+		echo "Usage: "$0" local [difypkg path or directory]"
 		echo "Example:"
 		echo "	"$0" local ./db_query.difypkg"
 		echo "	"$0" local /root/dify-plugin/db_query.difypkg"
+		echo "	"$0" local ./_temp"
 		echo ""
 		exit 1
 	fi
-	PLUGIN_PACKAGE_PATH=`realpath $2`
-	repackage ${PLUGIN_PACKAGE_PATH}
+
+	TARGET_PATH=$(realpath "$2")
+
+	if [ -d "$TARGET_PATH" ]; then
+		echo "Processing all .difypkg files in directory: $TARGET_PATH"
+		find "$TARGET_PATH" -type f -name "*.difypkg" -print0 | while IFS= read -r -d $'\0' f; do
+			echo "Repackaging $f"
+			repackage "$f"
+		done
+	elif [ -f "$TARGET_PATH" ]; then
+		repackage "${TARGET_PATH}"
+	else
+		echo "Error: Path $2 is not a valid file or directory."
+		exit 1
+	fi
 }
 
 repackage(){
 	local PACKAGE_PATH=$1
-	PACKAGE_NAME_WITH_EXTENSION=`basename ${PACKAGE_PATH}`
+	PACKAGE_NAME_WITH_EXTENSION=$(basename "${PACKAGE_PATH}")
 	PACKAGE_NAME="${PACKAGE_NAME_WITH_EXTENSION%.*}"
-	echo "Unziping ..."
+
+	TEMP_DIR="${CURR_DIR}/${TEMP_DIR_NAME}"
+	OUTPUT_DIR="${CURR_DIR}/${OUTPUT_DIR_NAME}"
+	mkdir -p "${TEMP_DIR}"
+	mkdir -p "${OUTPUT_DIR}"
+
+	local UNPACK_DIR="${TEMP_DIR}/${PACKAGE_NAME}"
+	rm -rf "${UNPACK_DIR}"
+	
+	echo "Unziping to ${UNPACK_DIR} ..."
 	install_unzip
-	unzip -o ${PACKAGE_PATH} -d ${CURR_DIR}/${PACKAGE_NAME}
+	unzip -o "${PACKAGE_PATH}" -d "${UNPACK_DIR}"
 	if [[ $? -ne 0 ]]; then
 		echo "Unzip failed."
 		exit 1
 	fi
 	echo "Unzip success."
+
 	echo "Repackaging ..."
-	cd ${CURR_DIR}/${PACKAGE_NAME}
+	cd "${UNPACK_DIR}"
 	pip download ${PIP_PLATFORM} -r requirements.txt -d ./wheels --index-url ${PIP_MIRROR_URL} --trusted-host mirrors.aliyun.com
 	if [[ $? -ne 0 ]]; then
 		echo "Pip download failed."
 		exit 1
 	fi
+
 	if [[ "linux" == "$OS_TYPE" ]]; then
 		sed -i '1i\--no-index --find-links=./wheels/' requirements.txt
 	elif [[ "darwin" == "$OS_TYPE" ]]; then
@@ -123,6 +149,7 @@ repackage(){
 	  ' requirements.txt
 		rm -f requirements.txt.bak
 	fi
+
 	IGNORE_PATH=.difyignore
 	if [ ! -f "$IGNORE_PATH" ]; then
 		IGNORE_PATH=.gitignore
@@ -135,10 +162,12 @@ repackage(){
 			rm -f "${IGNORE_PATH}.bak"
 		fi
 	fi
-	cd ${CURR_DIR}
-	chmod 755 ${CURR_DIR}/${CMD_NAME}
-	${CURR_DIR}/${CMD_NAME} plugin package ${CURR_DIR}/${PACKAGE_NAME} -o ${CURR_DIR}/${PACKAGE_NAME}-${PACKAGE_SUFFIX}.difypkg
-	echo "Repackage success."
+
+	cd "${CURR_DIR}"
+	chmod 755 "${CURR_DIR}/${CMD_NAME}"
+	${CURR_DIR}/${CMD_NAME} plugin package "${UNPACK_DIR}" -o "${OUTPUT_DIR}/${PACKAGE_NAME}-${PACKAGE_SUFFIX}.difypkg"
+	echo "Repackage success. Output file: ${OUTPUT_DIR}/${PACKAGE_NAME}-${PACKAGE_SUFFIX}.difypkg"
+	rm -rf "${UNPACK_DIR}"
 }
 
 install_unzip(){
@@ -153,18 +182,22 @@ install_unzip(){
 }
 
 print_usage() {
-	echo "usage: $0 [-p platform] [-s package_suffix] {market|github|local}"
+	echo "usage: $0 [-p platform] [-s package_suffix] [-t temp_dir] [-o output_dir] {market|github|local}"
 	echo "-p platform: python packages' platform. Using for crossing repacking.
         For example: -p manylinux2014_x86_64 or -p manylinux2014_aarch64"
 	echo "-s package_suffix: The suffix name of the output offline package.
         For example: -s linux-amd64 or -s linux-arm64"
+	echo "-t temp_dir: The temporary directory for unpacking files."
+	echo "-o output_dir: The output directory for repackaged files."
 	exit 1
 }
 
-while getopts "p:s:" opt; do
+while getopts "p:s:t:o:" opt; do
 	case "$opt" in
 		p) PIP_PLATFORM="--platform ${OPTARG} --only-binary=:all:" ;;
 		s) PACKAGE_SUFFIX="${OPTARG}" ;;
+		t) TEMP_DIR_NAME="${OPTARG}" ;;
+		o) OUTPUT_DIR_NAME="${OPTARG}" ;;
 		*) print_usage; exit 1 ;;
 	esac
 done

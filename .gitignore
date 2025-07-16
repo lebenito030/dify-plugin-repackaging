@@ -2,3 +2,6 @@
 .idea
 .vscode
 *.iml
+_temp/*.*
+_work/
+_output/
